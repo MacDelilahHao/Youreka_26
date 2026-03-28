@@ -6,9 +6,9 @@ library(haven)
 library(ggplot2)
 library(ggeffects)
 
-dt <- read.csv("~/Downloads/Youreka_25/20260322_1001data.csv")
+dt <- read.csv("~/Downloads/Youreka_25/20260326_1011data.csv")
 #dt <- na.omit(dt) - this deletes the last row w/out the lag but lag has been removed
-dt <- subset(dt, !is.na(CO2)) # this works
+dt <- subset(dt, !is.na(CO2)) # this cleans it
 
 #head(dt, 5)
 
@@ -20,14 +20,17 @@ dt <- subset(dt, !is.na(CO2)) # this works
 # --- multivariate cleaned dataset ---
 
 y_var <- dt$Total # y_variable for multivariate regression
+print(y_var)
 
 c_dt <- dt[, c("Total", "Temperature", "CO2", "PM2.5", "Time")]
 #head(c_dt, 3)
 
+#nrow(c_dt) # count the number of observations used in the analysis
+
 plot(c_dt)
 
 # block 1 for total
-time_mr <- lm(y_var ~ Time, data = dt)
+time_mr <- lm(y_var ~ Time, data = c_dt)
 summary(time_mr)
 
 #abline(time_mr, col="red", lwd=2)
@@ -39,8 +42,50 @@ summary(all_mr)
 
 anova(time_mr, all_mr) # Comparing block 1 w/ block 2
 
+# COEFF GRAPH FOR JUST TIME -> POSTER
 
-# COEFF GRAPH FOR POSTER
+confint(time_mr)
+
+# Coefficient estimates
+coef_mat <- summary(time_mr)$coefficients
+coef_df <- as.data.frame(coef_mat)
+coef_df$term <- rownames(coef_df)
+
+# Confidence intervals (default = 95%)
+ci <- confint(time_mr)
+ci_df <- as.data.frame(ci)
+ci_df$term <- rownames(ci_df)
+
+# Merge coefficients + CI
+plot_df <- merge(coef_df, ci_df, by = "term")
+
+# Remove intercept
+plot_df <- plot_df[plot_df$term != "(Intercept)", ]
+
+# Set order
+plot_df$term <- factor(plot_df$term,
+                       levels = c("Time"))
+
+# Plot
+ggplot(plot_df, aes(x = term, y = Estimate)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  geom_point(color = "#5d5387", size = 3) +
+  geom_errorbar(aes(ymin = `2.5 %`, ymax = `97.5 %`),
+                width = 0.2, color = "black") +
+  labs(
+    title = "Coefficient Plot for Time on Total ARGs",
+    x = "Variable",
+    y = "Coefficient (95% CI)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    text = element_text(family = "Times New Roman")
+  ) +
+  coord_flip()
+
+
+# COEFF GRAPH FOR TOTAL -> POSTER
 
 confint(all_mr)
 
@@ -67,11 +112,11 @@ plot_df$term <- factor(plot_df$term,
 # Plot
 ggplot(plot_df, aes(x = term, y = Estimate)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  geom_point(color = "blue", size = 3) +
+  geom_point(color = "#5d5387", size = 3) +
   geom_errorbar(aes(ymin = `2.5 %`, ymax = `97.5 %`),
                 width = 0.2, color = "black") +
   labs(
-    title = "Coefficient Plot for Climate Change Variables",
+    title = "Coefficient Plot for Climate Change Variables on Total ARGs",
     x = "Variable",
     y = "Coefficient (95% CI)"
   ) +
@@ -100,7 +145,7 @@ partial_temp <- cbind(partial_temp, pred)  # combine predictions with data
 # Plot partial effect using ggplot2
 
 ggplot(partial_temp, aes(x = Temperature, y = fit)) +
-  geom_line(color = "blue", linewidth = 1.2) +
+  geom_line(color = "#5d5387", linewidth = 1.2) +
   geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2, fill = "blue") +
   geom_point(data = c_dt, aes(x = Temperature, y = Total), color = "black", alpha = 0.6) +
   labs(
@@ -132,5 +177,48 @@ summary(adj_all_mr)
 
 
 anova(adj_mr, adj_all_mr) # Comparing block 1 w/ block 2
+
+
+# COEFF GRAPH FOR ADJUSTED ->POSTER
+
+confint(adj_all_mr)
+
+# Coefficient estimates
+coef_mat <- summary(adj_all_mr)$coefficients
+coef_df <- as.data.frame(coef_mat)
+coef_df$term <- rownames(coef_df)
+
+# Confidence intervals (default = 95%)
+ci <- confint(adj_all_mr)
+ci_df <- as.data.frame(ci)
+ci_df$term <- rownames(ci_df)
+
+# Merge coefficients + CI
+plot_df <- merge(coef_df, ci_df, by = "term")
+
+# Remove intercept
+plot_df <- plot_df[plot_df$term != "(Intercept)", ]
+
+# Set order
+plot_df$term <- factor(plot_df$term,
+                       levels = c("Temperature", "CO2", "PM2.5", "Time"))
+
+# Plot
+ggplot(plot_df, aes(x = term, y = Estimate)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  geom_point(color = "#5d5387", size = 3) +
+  geom_errorbar(aes(ymin = `2.5 %`, ymax = `97.5 %`),
+                width = 0.2, color = "black") +
+  labs(
+    title = "Coefficient Plot for Climate Change Variables on Perfect and Strict ARGs",
+    x = "Variable",
+    y = "Coefficient (95% CI)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    text = element_text(family = "Times New Roman")
+  ) +
+  coord_flip()
 
 
