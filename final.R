@@ -1,13 +1,14 @@
 #install.packages("haven")
 #install.packages("ggplot2")
 #install.packages("ggeffects")
+#install.packages("lmtest")
 
-library(haven)
+#library(haven)
 library(ggplot2)
 library(ggeffects)
+library(lmtest)
 
 dt <- read.csv("~/Downloads/Youreka_25/20260326_1011data.csv")
-#dt <- na.omit(dt) - this deletes the last row w/out the lag but lag has been removed
 dt <- subset(dt, !is.na(CO2)) # this cleans it
 
 #head(dt, 5)
@@ -28,6 +29,38 @@ c_dt <- dt[, c("Total", "Temperature", "CO2", "PM2.5", "Time")]
 #nrow(c_dt) # count the number of observations used in the analysis
 
 plot(c_dt)
+
+
+# --- ASSUMPTIONS ---
+
+# outliers
+boxplot(c_dt$Total, main="Boxplot for Total ARGs", ylab="Value")
+boxplot(c_dt$Temperature, main="Boxplot for Temperature", ylab="Value")
+boxplot(c_dt$CO2, main="Boxplot for CO2", ylab="Value")
+boxplot(c_dt$PM2.5, main="Boxplot for PM2.5", ylab="Value")
+
+all_mr <- lm(y_var ~ Temperature + CO2 + PM2.5 + Time, data = c_dt)
+
+# normality of residuals
+
+residuals = all_mr$residuals
+hist(residuals)
+
+# multicollinearity assumption plotted 
+
+# linearity
+resettest(all_mr)
+plot(all_mr, 1)
+
+# independence (Durbin-Watson)
+dw_stat <- sum((diff(residuals))^2) / sum(residuals^2)
+print(dw_stat)
+
+# homoscedascity (Breush-Pagan Test)
+plot(all_mr)
+bp_test <- bptest(all_mr)
+print(bp_test)
+
 
 # block 1 for total
 time_mr <- lm(y_var ~ Time, data = c_dt)
@@ -220,5 +253,3 @@ ggplot(plot_df, aes(x = term, y = Estimate)) +
     text = element_text(family = "Times New Roman")
   ) +
   coord_flip()
-
-
